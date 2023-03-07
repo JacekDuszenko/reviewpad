@@ -6,6 +6,7 @@ package plugins_aladino
 
 import (
 	"log"
+	"plugin"
 
 	"github.com/reviewpad/reviewpad/v4/lang/aladino"
 	actions "github.com/reviewpad/reviewpad/v4/plugins/aladino/actions"
@@ -14,9 +15,25 @@ import (
 	"google.golang.org/grpc"
 )
 
+type PrivatePlugin struct {
+	Name        string
+	Path        string
+	BuiltInName string
+	Symbol      plugin.Symbol
+}
+
 type PluginConfig struct {
 	Services        map[string]interface{}
 	grpcConnections []*grpc.ClientConn
+	PrivatePlugins  []PrivatePlugin
+}
+
+var privatePluginsList = []PrivatePlugin{
+	{
+		Name:        "CommentCodeWithPattern",
+		Path:        "./private/commentCodeWithPattern.so",
+		BuiltInName: "commentCodeWithPattern",
+	},
 }
 
 func DefaultPluginConfig() (*PluginConfig, error) {
@@ -35,6 +52,24 @@ func DefaultPluginConfig() (*PluginConfig, error) {
 	config := &PluginConfig{
 		Services:        services,
 		grpcConnections: connections,
+		PrivatePlugins:  make([]PrivatePlugin, 0),
+	}
+
+	for _, privatePlugin := range privatePluginsList {
+		p, err := plugin.Open(privatePlugin.Path)
+		if err != nil {
+			log.Printf("Error loading plugin %s: %s", privatePlugin.Name, err)
+			continue
+		}
+
+		symbol, err := p.Lookup(privatePlugin.Name)
+		if err != nil {
+			log.Printf("Error loading plugin %s: %s", privatePlugin.Name, err)
+			continue
+		}
+
+		privatePlugin.Symbol = symbol
+		config.PrivatePlugins = append(config.PrivatePlugins, privatePlugin)
 	}
 
 	return config, nil
@@ -50,117 +85,132 @@ func (config *PluginConfig) CleanupPluginConfig() {
 // https://github.com/reviewpad/docs/blob/main/aladino/builtins.md
 // This means that changes to the builtins need to be propagated to that document.
 func PluginBuiltInsWithConfig(config *PluginConfig) *aladino.BuiltIns {
+	functions := map[string]*aladino.BuiltInFunction{
+		// Pull Request
+		"assignees":                 functions.Assignees(),
+		"approvalsCount":            functions.ApprovalsCount(),
+		"author":                    functions.Author(),
+		"base":                      functions.Base(),
+		"changed":                   functions.Changed(),
+		"checkRunConclusion":        functions.CheckRunConclusion(),
+		"commentCount":              functions.CommentCount(),
+		"comments":                  functions.Comments(),
+		"commitCount":               functions.CommitCount(),
+		"commits":                   functions.Commits(),
+		"context":                   functions.Context(),
+		"createdAt":                 functions.CreatedAt(),
+		"description":               functions.Description(),
+		"eventType":                 functions.EventType(),
+		"fileCount":                 functions.FileCount(),
+		"filesPath":                 functions.FilesPath(),
+		"hasAnnotation":             functions.HasAnnotation(),
+		"hasAnyCheckRunCompleted":   functions.HasAnyCheckRunCompleted(),
+		"hasBinaryFile":             functions.HasBinaryFile(),
+		"hasCodePattern":            functions.HasCodePattern(),
+		"hasFileExtensions":         functions.HasFileExtensions(),
+		"hasFileName":               functions.HasFileName(),
+		"hasFilePattern":            functions.HasFilePattern(),
+		"hasGitConflicts":           functions.HasGitConflicts(),
+		"hasLinearHistory":          functions.HasLinearHistory(),
+		"hasLinkedIssues":           functions.HasLinkedIssues(),
+		"hasRequiredApprovals":      functions.HasRequiredApprovals(),
+		"hasUnaddressedThreads":     functions.HasUnaddressedThreads(),
+		"haveAllChecksRunCompleted": functions.HaveAllChecksRunCompleted(),
+		"head":                      functions.Head(),
+		"isBinary":                  functions.IsBinary(),
+		"isDraft":                   functions.IsDraft(),
+		"isUpdatedWithBaseBranch":   functions.IsUpdatedWithBaseBranch(),
+		"isLinkedToProject":         functions.IsLinkedToProject(),
+		"isMerged":                  functions.IsMerged(),
+		"isWaitingForReview":        functions.IsWaitingForReview(),
+		"labels":                    functions.Labels(),
+		"lastEventAt":               functions.LastEventAt(),
+		"milestone":                 functions.Milestone(),
+		"requestedReviewers":        functions.RequestedReviewers(),
+		"reviewers":                 functions.Reviewers(),
+		"reviewerStatus":            functions.ReviewerStatus(),
+		"size":                      functions.Size(),
+		"state":                     functions.State(),
+		"title":                     functions.Title(),
+		"toJSON":                    functions.ToJSON(),
+		"workflowStatus":            functions.WorkflowStatus(),
+		// Organization
+		"organization": functions.Organization(),
+		"team":         functions.Team(),
+		// User
+		"issueCountBy":             functions.IssueCountBy(),
+		"pullRequestCountBy":       functions.PullRequestCountBy(),
+		"totalCodeReviews":         functions.TotalCodeReviews(),
+		"totalCreatedPullRequests": functions.TotalCreatedPullRequests(),
+		// Utilities
+		"all":               functions.All(),
+		"any":               functions.Any(),
+		"append":            functions.AppendString(),
+		"contains":          functions.Contains(),
+		"isElementOf":       functions.IsElementOf(),
+		"join":              functions.Join(),
+		"length":            functions.Length(),
+		"matchString":       functions.MatchString(),
+		"selectFromContext": functions.SelectFromContext(),
+		"selectFromJSON":    functions.SelectFromJSON(),
+		"sprintf":           functions.Sprintf(),
+		"startsWith":        functions.StartsWith(),
+		"toBool":            functions.ToBool(),
+		"toNumber":          functions.ToNumber(),
+		"toStringArray":     functions.ToStringArray(),
+		// Engine
+		"group": functions.Group(),
+		"rule":  functions.Rule(),
+		// Internal
+		"filter": functions.Filter(),
+	}
+
+	actions := map[string]*aladino.BuiltInAction{
+		"addLabel":                  actions.AddLabel(),
+		"addToProject":              actions.AddToProject(),
+		"approve":                   actions.Approve(),
+		"assignAssignees":           actions.AssignAssignees(),
+		"assignCodeAuthorReviewers": actions.AssignCodeAuthorReviewers(),
+		"assignRandomReviewer":      actions.AssignRandomReviewer(),
+		"assignReviewer":            actions.AssignReviewer(),
+		"assignTeamReviewer":        actions.AssignTeamReviewer(),
+		"close":                     actions.Close(),
+		"comment":                   actions.Comment(),
+		"commentOnce":               actions.CommentOnce(),
+		"commitLint":                actions.CommitLint(),
+		"deleteHeadBranch":          actions.DeleteHeadBranch(),
+		"disableActions":            actions.DisableActions(),
+		"error":                     actions.ErrorMsg(),
+		"fail":                      actions.Fail(),
+		"info":                      actions.Info(),
+		"merge":                     actions.Merge(),
+		"rebase":                    actions.Rebase(),
+		"removeFromProject":         actions.RemoveFromProject(),
+		"removeLabel":               actions.RemoveLabel(),
+		"removeLabels":              actions.RemoveLabels(),
+		"review":                    actions.Review(),
+		"robin":                     actions.Robin(),
+		"setProjectField":           actions.SetProjectField(),
+		"titleLint":                 actions.TitleLint(),
+		"triggerWorkflow":           actions.TriggerWorkflow(),
+		"warn":                      actions.Warn(),
+	}
+
+	for _, privatePlugin := range config.PrivatePlugins {
+		switch plugin := privatePlugin.Symbol.(type) {
+		case func() *aladino.BuiltInFunction:
+			functions[privatePlugin.BuiltInName] = plugin()
+		case func() *aladino.BuiltInAction:
+			actions[privatePlugin.BuiltInName] = plugin()
+		default:
+			log.Printf(`Unknown private plugin "%s" type: %T`, privatePlugin.Name, plugin)
+		}
+	}
+
 	return &aladino.BuiltIns{
-		Functions: map[string]*aladino.BuiltInFunction{
-			// Pull Request
-			"assignees":                 functions.Assignees(),
-			"approvalsCount":            functions.ApprovalsCount(),
-			"author":                    functions.Author(),
-			"base":                      functions.Base(),
-			"changed":                   functions.Changed(),
-			"checkRunConclusion":        functions.CheckRunConclusion(),
-			"commentCount":              functions.CommentCount(),
-			"comments":                  functions.Comments(),
-			"commitCount":               functions.CommitCount(),
-			"commits":                   functions.Commits(),
-			"context":                   functions.Context(),
-			"createdAt":                 functions.CreatedAt(),
-			"description":               functions.Description(),
-			"eventType":                 functions.EventType(),
-			"fileCount":                 functions.FileCount(),
-			"filesPath":                 functions.FilesPath(),
-			"hasAnnotation":             functions.HasAnnotation(),
-			"hasAnyCheckRunCompleted":   functions.HasAnyCheckRunCompleted(),
-			"hasBinaryFile":             functions.HasBinaryFile(),
-			"hasCodePattern":            functions.HasCodePattern(),
-			"hasFileExtensions":         functions.HasFileExtensions(),
-			"hasFileName":               functions.HasFileName(),
-			"hasFilePattern":            functions.HasFilePattern(),
-			"hasGitConflicts":           functions.HasGitConflicts(),
-			"hasLinearHistory":          functions.HasLinearHistory(),
-			"hasLinkedIssues":           functions.HasLinkedIssues(),
-			"hasRequiredApprovals":      functions.HasRequiredApprovals(),
-			"hasUnaddressedThreads":     functions.HasUnaddressedThreads(),
-			"haveAllChecksRunCompleted": functions.HaveAllChecksRunCompleted(),
-			"head":                      functions.Head(),
-			"isBinary":                  functions.IsBinary(),
-			"isDraft":                   functions.IsDraft(),
-			"isUpdatedWithBaseBranch":   functions.IsUpdatedWithBaseBranch(),
-			"isLinkedToProject":         functions.IsLinkedToProject(),
-			"isMerged":                  functions.IsMerged(),
-			"isWaitingForReview":        functions.IsWaitingForReview(),
-			"labels":                    functions.Labels(),
-			"lastEventAt":               functions.LastEventAt(),
-			"milestone":                 functions.Milestone(),
-			"requestedReviewers":        functions.RequestedReviewers(),
-			"reviewers":                 functions.Reviewers(),
-			"reviewerStatus":            functions.ReviewerStatus(),
-			"size":                      functions.Size(),
-			"state":                     functions.State(),
-			"title":                     functions.Title(),
-			"toJSON":                    functions.ToJSON(),
-			"workflowStatus":            functions.WorkflowStatus(),
-			// Organization
-			"organization": functions.Organization(),
-			"team":         functions.Team(),
-			// User
-			"issueCountBy":             functions.IssueCountBy(),
-			"pullRequestCountBy":       functions.PullRequestCountBy(),
-			"totalCodeReviews":         functions.TotalCodeReviews(),
-			"totalCreatedPullRequests": functions.TotalCreatedPullRequests(),
-			// Utilities
-			"all":               functions.All(),
-			"any":               functions.Any(),
-			"append":            functions.AppendString(),
-			"contains":          functions.Contains(),
-			"isElementOf":       functions.IsElementOf(),
-			"join":              functions.Join(),
-			"length":            functions.Length(),
-			"matchString":       functions.MatchString(),
-			"selectFromContext": functions.SelectFromContext(),
-			"selectFromJSON":    functions.SelectFromJSON(),
-			"sprintf":           functions.Sprintf(),
-			"startsWith":        functions.StartsWith(),
-			"toBool":            functions.ToBool(),
-			"toNumber":          functions.ToNumber(),
-			"toStringArray":     functions.ToStringArray(),
-			// Engine
-			"group": functions.Group(),
-			"rule":  functions.Rule(),
-			// Internal
-			"filter": functions.Filter(),
-		},
-		Actions: map[string]*aladino.BuiltInAction{
-			"addLabel":                  actions.AddLabel(),
-			"addToProject":              actions.AddToProject(),
-			"approve":                   actions.Approve(),
-			"assignAssignees":           actions.AssignAssignees(),
-			"assignCodeAuthorReviewers": actions.AssignCodeAuthorReviewers(),
-			"assignRandomReviewer":      actions.AssignRandomReviewer(),
-			"assignReviewer":            actions.AssignReviewer(),
-			"assignTeamReviewer":        actions.AssignTeamReviewer(),
-			"close":                     actions.Close(),
-			"comment":                   actions.Comment(),
-			"commentOnce":               actions.CommentOnce(),
-			"commitLint":                actions.CommitLint(),
-			"deleteHeadBranch":          actions.DeleteHeadBranch(),
-			"disableActions":            actions.DisableActions(),
-			"error":                     actions.ErrorMsg(),
-			"fail":                      actions.Fail(),
-			"info":                      actions.Info(),
-			"merge":                     actions.Merge(),
-			"rebase":                    actions.Rebase(),
-			"removeFromProject":         actions.RemoveFromProject(),
-			"removeLabel":               actions.RemoveLabel(),
-			"removeLabels":              actions.RemoveLabels(),
-			"review":                    actions.Review(),
-			"robin":                     actions.Robin(),
-			"setProjectField":           actions.SetProjectField(),
-			"titleLint":                 actions.TitleLint(),
-			"triggerWorkflow":           actions.TriggerWorkflow(),
-			"warn":                      actions.Warn(),
-		},
-		Services: config.Services,
+		Functions: functions,
+		Actions:   actions,
+		Services:  config.Services,
 	}
 }
 
