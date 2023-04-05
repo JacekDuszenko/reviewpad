@@ -5,6 +5,8 @@
 package plugins_aladino_actions
 
 import (
+	"strings"
+
 	"github.com/reviewpad/reviewpad/v4/codehost/github/target"
 	"github.com/reviewpad/reviewpad/v4/handler"
 	"github.com/reviewpad/reviewpad/v4/lang/aladino"
@@ -23,6 +25,7 @@ func commentCode(e aladino.Env, args []aladino.Value) error {
 	pullRequest := t.PullRequest
 	repo := pullRequest.GetBase().GetRepo()
 	commentBody := args[0].(*aladino.StringValue).Val
+	projectID := strings.TrimPrefix(repo.GetId(), "gid://gitlab/Project/")
 
-	return e.GetCodeHostClient().PostGeneralComment(e.GetCtx(), repo.GetFullName(), repo.GetId(), int32(pullRequest.GetNumber()), commentBody)
+	return e.GetCodeHostClient().PostGeneralComment(e.GetCtx(), repo.GetFullName(), projectID, int32(pullRequest.GetNumber()), commentBody)
 }
