@@ -44,15 +44,14 @@ func GetHostInfo(url string) (*HostInfo, error) {
 	}, nil
 }
 
-func (c *CodeHostClient) PostGeneralComment(ctx context.Context, slug, repoID, reviewID string, reviewNum int32, body string) error {
+func (c *CodeHostClient) PostGeneralComment(ctx context.Context, slug, repoID string, reviewNum int32, body string) error {
 	req := &api.PostGeneralCommentRequest{
-		Host:             c.HostInfo.Host,
-		HostUri:          c.HostInfo.HostUri,
-		Slug:             slug,
-		ExternalRepoId:   repoID,
-		ExternalReviewId: reviewID,
-		ReviewNumber:     reviewNum,
-		AccessToken:      c.Token,
+		Host:           c.HostInfo.Host,
+		HostUri:        c.HostInfo.HostUri,
+		Slug:           slug,
+		ExternalRepoId: repoID,
+		ReviewNumber:   reviewNum,
+		AccessToken:    c.Token,
 		Comment: &pbc.ReviewComment{
 			Body: body,
 		},

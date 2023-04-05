@@ -5,6 +5,7 @@
 package plugins_aladino_actions
 
 import (
+	"github.com/reviewpad/reviewpad/v4/codehost/github/target"
 	"github.com/reviewpad/reviewpad/v4/handler"
 	"github.com/reviewpad/reviewpad/v4/lang/aladino"
 )
@@ -18,7 +19,10 @@ func Comment() *aladino.BuiltInAction {
 }
 
 func commentCode(e aladino.Env, args []aladino.Value) error {
-	t := e.GetTarget()
+	t := e.GetTarget().(*target.PullRequestTarget)
+	pullRequest := t.PullRequest
+	repo := pullRequest.GetBase().GetRepo()
 	commentBody := args[0].(*aladino.StringValue).Val
-	return t.Comment(commentBody)
+
+	return e.GetCodeHostClient().PostGeneralComment(e.GetCtx(), repo.GetFullName(), repo.GetId(), int32(pullRequest.GetNumber()), commentBody)
 }
