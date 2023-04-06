@@ -267,7 +267,7 @@ For the argument `-e` you case use either a GitHub event from a Reviewpad GitHub
 2. Copy the content inside the property `body`.
 3. Paste the content inside a file (e.g. `my_event.json`) and save it under `cli > debugdata`.
 4. This content is an escape JSON string. Use the [JSON Parse & Stringify](https://marketplace.visualstudio.com/items?itemName=nextfaze.json-parse-stringify) extension to parse the content by pressing `Ctrl+Shift+P` and searching for `JSON: Parse Stringified JSON`.
-5. Rename the root properties `type` and `payload ` to `event_name` and `event` respectively.
+5. Rename the root properties `type` and `payload` to `event_name` and `event` respectively.
 6. Update the argument `-e` to point to the full path of the file you just created.
 
 You can then run the debugger by pressing F5.
