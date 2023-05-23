@@ -16,10 +16,11 @@ import (
 	"github.com/reviewpad/go-lib/entities"
 	log "github.com/reviewpad/go-lib/logrus"
 	"github.com/reviewpad/reviewpad/v4/handler"
-	"github.com/reviewpad/reviewpad/v4/lang/aladino"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
+
+const DefaultMockPrNum = 6
 
 func buildPayload(payload []byte) *json.RawMessage {
 	rawPayload := json.RawMessage(payload)
@@ -164,7 +165,7 @@ func TestProcessEvent(t *testing.T) {
 		func(req *http.Request) (*http.Response, error) {
 			b, err := json.Marshal([]*github.PullRequest{
 				{
-					Number: github.Int(aladino.DefaultMockPrNum),
+					Number: github.Int(DefaultMockPrNum),
 					Base: &github.PullRequestBranch{
 						Ref: github.String("refs/heads/main"),
 						Repo: &github.Repository{
@@ -214,9 +215,9 @@ func TestProcessEvent(t *testing.T) {
 		func(req *http.Request) (*http.Response, error) {
 			b, err := json.Marshal([]*github.Issue{
 				{
-					Number: github.Int(aladino.DefaultMockPrNum),
+					Number: github.Int(DefaultMockPrNum),
 					PullRequestLinks: &github.PullRequestLinks{
-						HTMLURL: github.String(fmt.Sprintf("https://api.github.com/repos/%v/%v/pull/%v", owner, repo, aladino.DefaultMockPrNum)),
+						HTMLURL: github.String(fmt.Sprintf("https://api.github.com/repos/%v/%v/pull/%v", owner, repo, DefaultMockPrNum)),
 					},
 					Repository: &github.Repository{
 						Owner: &github.User{
@@ -495,7 +496,7 @@ func TestProcessEvent(t *testing.T) {
 				},
 				{
 					Kind:        entities.PullRequest,
-					Number:      aladino.DefaultMockPrNum,
+					Number:      DefaultMockPrNum,
 					Owner:       owner,
 					Repo:        repo,
 					AccountType: "Organization",
@@ -526,7 +527,7 @@ func TestProcessEvent(t *testing.T) {
 			wantTargets: []*entities.TargetEntity{
 				{
 					Kind:        entities.PullRequest,
-					Number:      aladino.DefaultMockPrNum,
+					Number:      DefaultMockPrNum,
 					Owner:       owner,
 					Repo:        repo,
 					AccountType: "Organization",
@@ -701,7 +702,7 @@ func TestProcessEvent(t *testing.T) {
 			wantTargets: []*entities.TargetEntity{
 				{
 					Kind:        entities.PullRequest,
-					Number:      aladino.DefaultMockPrNum,
+					Number:      DefaultMockPrNum,
 					Owner:       owner,
 					Repo:        repo,
 					AccountType: "Organization",
@@ -768,7 +769,7 @@ func TestProcessEvent(t *testing.T) {
 			wantTargets: []*entities.TargetEntity{
 				{
 					Kind:        entities.PullRequest,
-					Number:      aladino.DefaultMockPrNum,
+					Number:      DefaultMockPrNum,
 					Owner:       owner,
 					Repo:        repo,
 					AccountType: "Organization",
