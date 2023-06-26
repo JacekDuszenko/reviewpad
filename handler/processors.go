@@ -635,6 +635,19 @@ func extractTargetEntitiesFromRepositories(repos []*github.Repository, accountTy
 	return targetEntities, nil
 }
 
+func processMarketplacePurchaseEvent(event *github.MarketplacePurchaseEvent) ([]*entities.TargetEntity, *entities.EventDetails, error) {
+	return []*entities.TargetEntity{
+			{
+				Kind:  entities.Organization,
+				Owner: event.GetMarketplacePurchase().GetAccount().GetLogin(),
+			},
+		}, &entities.EventDetails{
+			EventName:   "marketplace_purchase",
+			EventAction: event.GetAction(),
+			Payload:     event,
+		}, nil
+}
+
 // reviewpad-an: critical
 // output: the list of pull requests/issues that are affected by the event.
 func ProcessEvent(log *logrus.Entry, event *ActionEvent) ([]*entities.TargetEntity, *entities.EventDetails, error) {
@@ -696,7 +709,7 @@ func ProcessEvent(log *logrus.Entry, event *ActionEvent) ([]*entities.TargetEnti
 	case *github.LabelEvent:
 		return processUnsupportedEvent(payload)
 	case *github.MarketplacePurchaseEvent:
-		return processUnsupportedEvent(payload)
+		return processMarketplacePurchaseEvent(payload)
 	case *github.MemberEvent:
 		return processUnsupportedEvent(payload)
 	case *github.MembershipEvent:
